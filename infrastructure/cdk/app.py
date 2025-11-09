@@ -4,6 +4,7 @@ AWS CDK App for Goldman Sachs Vendor Onboarding Hub
 Infrastructure as Code for the hackathon project
 """
 import aws_cdk as cdk
+from aws_cdk import aws_s3 as s3, aws_s3_notifications as s3_notifications
 from stacks.vpc_stack import VpcStack
 from stacks.storage_stack import StorageStack
 from stacks.database_stack import DatabaseStack
@@ -52,6 +53,10 @@ lambda_stack = LambdaStack(
     description="Lambda functions for document processing and business logic",
     env=env
 )
+
+# Note: S3 event notifications for document processor are configured
+# in a separate manual step after deployment to avoid circular dependencies
+# See: infrastructure/scripts/setup_s3_notifications.sh
 
 # Stack 5: API Gateway
 api_stack = ApiStack(

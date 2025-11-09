@@ -6,7 +6,6 @@ import json
 import psycopg2
 import os
 import boto3
-import requests
 from datetime import datetime
 
 secrets_client = boto3.client('secretsmanager')
@@ -391,7 +390,7 @@ def handler(event, context):
                 vendor_id, overall_score, financial_score, compliance_score,
                 cyber_score, esg_score, sanctions_result, red_flags, risk_level
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s)
             RETURNING id, calculated_at
         """, (
             vendor_id, overall_score, financial_score, compliance_score,

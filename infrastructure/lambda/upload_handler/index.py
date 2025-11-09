@@ -18,7 +18,6 @@ def handler(event, context):
     Generate presigned URL for document upload
 
     Request: {
-        "vendor_id": "uuid",
         "document_type": "w9" | "insurance" | "diversity_cert" | "bcp",
         "filename": "w9_form.pdf"
     }
@@ -30,9 +29,15 @@ def handler(event, context):
     }
     """
     try:
-        # Parse request
+        # Get vendor ID from path parameters (from /vendors/{id}/upload)
+        path_params = event.get('pathParameters', {})
+        vendor_id = path_params.get('id') if path_params else None
+
+        # Parse request body
         body = json.loads(event.get('body', '{}'))
-        vendor_id = body.get('vendor_id')
+        # Allow vendor_id to be passed in body as fallback
+        if not vendor_id:
+            vendor_id = body.get('vendor_id')
         document_type = body.get('document_type')
         filename = body.get('filename', 'document.pdf')
 

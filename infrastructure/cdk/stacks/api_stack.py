@@ -84,6 +84,13 @@ class ApiStack(Stack):
             apigw.LambdaIntegration(approve_handler),
         )
 
+        # POST /vendors/{id}/upload - Upload document
+        vendor_upload = vendor_by_id.add_resource("upload")
+        vendor_upload.add_method(
+            "POST",
+            apigw.LambdaIntegration(upload_handler),
+        )
+
         # ====================
         # /documents Resource
         # ====================

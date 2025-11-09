@@ -30,9 +30,11 @@ from aws_cdk import (
     aws_rds as rds,
     aws_iam as iam,
     aws_secretsmanager as secretsmanager,
+    aws_s3_notifications as s3_notifications,
     CfnOutput,
 )
 from constructs import Construct
+import os
 
 class LambdaStack(Stack):
     def __init__(
@@ -68,6 +70,17 @@ class LambdaStack(Stack):
         }
 
         # ====================
+        # Create psycopg2 Lambda Layer
+        # ====================
+        layer_path = os.path.join(os.path.dirname(__file__), '..', '..', 'layers', 'psycopg2-layer.zip')
+        psycopg2_layer = lambda_.LayerVersion(
+            self, "Psycopg2Layer",
+            code=lambda_.Code.from_asset(layer_path),
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_11],
+            description="psycopg2-binary and boto3 for PostgreSQL connectivity",
+        )
+
+        # ====================
         # Lambda Function: Upload Handler
         # ====================
         self.upload_handler = lambda_.Function(
@@ -101,6 +114,7 @@ class LambdaStack(Stack):
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
             description="Create new vendor in database",
+            layers=[psycopg2_layer],
         )
 
         # Grant database access
@@ -121,6 +135,7 @@ class LambdaStack(Stack):
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
             description="Get vendor onboarding status",
+            layers=[psycopg2_layer],
         )
 
         # Grant database access
@@ -141,6 +156,7 @@ class LambdaStack(Stack):
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
             description="Calculate vendor risk scores",
+            layers=[psycopg2_layer],
         )
 
         # Grant database access
@@ -183,6 +199,7 @@ class LambdaStack(Stack):
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
             description="Approve or reject vendor",
+            layers=[psycopg2_layer],
         )
 
         # Grant database access
@@ -198,6 +215,43 @@ class LambdaStack(Stack):
         )
 
         # ====================
+        # Lambda Function: Document Processor (OCR with Textract)
+        # ====================
+        self.document_processor = lambda_.Function(
+            self, "DocumentProcessor",
+            runtime=lambda_.Runtime.PYTHON_3_11,
+            handler="index.handler",
+            code=lambda_.Code.from_asset("../lambda/document_processor"),
+            timeout=Duration.seconds(300),  # 5 minutes for Textract processing
+            memory_size=1024,
+            environment=common_env,
+            vpc=vpc,
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
+            description="Process documents with AWS Textract for OCR and data extraction",
+            layers=[psycopg2_layer],
+        )
+
+        # Grant database access
+        db_secret.grant_read(self.document_processor)
+
+        # Grant S3 read access to document bucket
+        document_bucket.grant_read(self.document_processor)
+
+        # Grant Textract permissions
+        self.document_processor.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=[
+                    "textract:StartDocumentAnalysis",
+                    "textract:GetDocumentAnalysis",
+                ],
+                resources=["*"],
+            )
+        )
+
+        # Note: S3 event notifications will be configured in storage_stack.py
+        # to avoid circular dependencies
+
+        # ====================
         # Lambda Function: Database Initialization
         # ====================
         self.db_init_handler = lambda_.Function(
@@ -211,6 +265,7 @@ class LambdaStack(Stack):
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
             description="Initialize RDS database schema and seed data",
+            layers=[psycopg2_layer],
         )
 
         # Grant database access
@@ -233,6 +288,12 @@ class LambdaStack(Stack):
             self, "RiskScoreHandlerArn",
             value=self.risk_score_handler.function_arn,
             description="Risk Score Handler Lambda ARN",
+        )
+
+        CfnOutput(
+            self, "DocumentProcessorArn",
+            value=self.document_processor.function_arn,
+            description="Document Processor Lambda ARN",
         )
 
         CfnOutput(
