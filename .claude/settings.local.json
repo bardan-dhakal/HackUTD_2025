@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cdk bootstrap:*)",
+      "Bash(cdk deploy:*)",
+      "Bash(timeout 1800 cdk deploy --all --require-approval never)",
+      "Bash(python init_database.py:*)",
+      "Bash(aws ec2 describe-security-groups:*)",
+      "Bash(\"C:\\Python311\\python.exe\" -m pip install:*)",
+      "Bash(powershell -Command \"cd ''C:\\Users\\barda\\Documents\\Hack-UTD_local\\HackUTD_2025\\infrastructure\\lambda\\db_init''; python -m pip install -r requirements.txt --target . 2>&1 | tail -30\")",
+      "Bash(powershell -Command \"cd ''C:\\Users\\barda\\Documents\\Hack-UTD_local\\HackUTD_2025\\infrastructure\\lambda\\db_init''; python -m pip install -r requirements.txt --target . --no-user 2>&1 | tail -20\")",
+      "Bash(powershell:*)",
+      "Bash(timeout 600 cdk deploy:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -19,6 +19,7 @@ class ApiStack(Stack):
         risk_score_handler: lambda_.Function,
         approve_handler: lambda_.Function,
         create_vendor_handler: lambda_.Function,
+        db_init_handler: lambda_.Function,
         **kwargs
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -93,6 +94,18 @@ class ApiStack(Stack):
         documents_upload.add_method(
             "POST",
             apigw.LambdaIntegration(upload_handler),
+        )
+
+        # ====================
+        # /admin/init Resource
+        # ====================
+        admin = self.api.root.add_resource("admin")
+        init = admin.add_resource("init")
+
+        # POST /admin/init - Initialize database
+        init.add_method(
+            "POST",
+            apigw.LambdaIntegration(db_init_handler),
         )
 
         # Outputs

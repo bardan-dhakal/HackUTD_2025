@@ -28,47 +28,46 @@ class DatabaseStack(Stack):
             ),
         )
 
-        # Create Aurora Serverless v2 PostgreSQL cluster
-        self.database = rds.DatabaseCluster(
+        # Create RDS PostgreSQL instance (free tier compatible)
+        self.database = rds.DatabaseInstance(
             self, "VendorDatabase",
-            engine=rds.DatabaseClusterEngine.aurora_postgres(
-                version=rds.AuroraPostgresEngineVersion.VER_15_4
-            ),
+            engine=rds.DatabaseInstanceEngine.POSTGRES,
             credentials=rds.Credentials.from_secret(self.db_secret),
-            default_database_name="onboarding_hub",
+            database_name="onboarding_hub",
+            instance_type=ec2.InstanceType.of(
+                ec2.InstanceClass.BURSTABLE3,
+                ec2.InstanceSize.MICRO
+            ),  # Free tier eligible
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(
                 subnet_type=ec2.SubnetType.PRIVATE_ISOLATED  # No internet access
             ),
-            writer=rds.ClusterInstance.serverless_v2("writer",
-                scale_with_writer=True
-            ),
-            readers=[
-                # Optional: Add read replica for high availability
-                # rds.ClusterInstance.serverless_v2("reader", scale_with_writer=True)
-            ],
-            serverless_v2_min_capacity=0.5,  # Minimum ACUs (Aurora Capacity Units)
-            serverless_v2_max_capacity=2,    # Maximum ACUs (keep low for hackathon costs)
-            backup=rds.BackupProps(
-                retention=Duration.days(1),  # Minimal backup for hackathon
-            ),
+            backup_retention=Duration.days(1),  # Minimal backup for hackathon
             cloudwatch_logs_exports=["postgresql"],  # Enable CloudWatch logs
             storage_encrypted=True,  # Encrypt data at rest
+            allocated_storage=20,  # Free tier eligible (up to 20 GB)
             removal_policy=RemovalPolicy.DESTROY,  # For hackathon
             deletion_protection=False,  # Allow deletion
+            multi_az=False,  # Single AZ for cost
+        )
+
+        # Allow traffic from the VPC to the database
+        self.database.connections.allow_from(
+            ec2.Peer.ipv4(vpc.vpc_cidr_block),
+            ec2.Port.tcp(5432)
         )
 
         # Outputs
         CfnOutput(
             self, "DatabaseEndpoint",
-            value=self.database.cluster_endpoint.hostname,
-            description="Aurora PostgreSQL cluster endpoint",
+            value=self.database.db_instance_endpoint_address,
+            description="RDS PostgreSQL instance endpoint",
             export_name="OnboardingHubDatabaseEndpoint",
         )
 
         CfnOutput(
             self, "DatabasePort",
-            value=str(self.database.cluster_endpoint.port),
+            value="5432",
             description="Database port",
             export_name="OnboardingHubDatabasePort",
         )
@@ -86,3 +85,7 @@ class DatabaseStack(Stack):
             description="ARN of the secret containing database credentials",
             export_name="OnboardingHubDatabaseSecretArn",
         )
+
+        # Store database configuration for Lambda initialization
+        self.db_endpoint = self.database.db_instance_endpoint_address
+        self.db_port = 5432

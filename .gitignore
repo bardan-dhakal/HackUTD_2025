@@ -58,3 +58,36 @@ yarn-error.log*
 # Logs
 logs/
 *.log
+
+# AWS Secrets & Credentials
+.aws-credentials
+.aws/credentials
+.aws/config
+aws-*.json
+credentials*.json
+secrets*.json
+*-secret*.json
+*.pem
+*.key
+*.pfx
+
+# CDK Context
+cdk.context.json
+cdk.context.json.bak
+
+# Terraform
+terraform.tfvars
+terraform.tfstate*
+.terraform/
+
+# Lambda Dependencies (installed via pip)
+infrastructure/lambda/*/boto3/
+infrastructure/lambda/*/botocore/
+infrastructure/lambda/*/psycopg2*/
+infrastructure/lambda/*/*.dist-info/
+infrastructure/lambda/*/bin/
+infrastructure/lambda/*/jmespath/
+infrastructure/lambda/*/python_dateutil/
+infrastructure/lambda/*/s3transfer/
+infrastructure/lambda/*/six/
+infrastructure/lambda/*/urllib3/

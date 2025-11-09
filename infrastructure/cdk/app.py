@@ -9,12 +9,13 @@ from stacks.storage_stack import StorageStack
 from stacks.database_stack import DatabaseStack
 from stacks.lambda_stack import LambdaStack
 from stacks.api_stack import ApiStack
+from stacks.bastion_stack import BastionStack
 
 app = cdk.App()
 
 # Environment configuration
 env = cdk.Environment(
-    account="YOUR_AWS_ACCOUNT_ID",  # Replace with your AWS account ID
+    account="560271561576",  # Replace with your AWS account ID
     region="us-east-1"  # Or your preferred region
 )
 
@@ -60,13 +61,24 @@ api_stack = ApiStack(
     risk_score_handler=lambda_stack.risk_score_handler,
     approve_handler=lambda_stack.approve_handler,
     create_vendor_handler=lambda_stack.create_vendor_handler,
+    db_init_handler=lambda_stack.db_init_handler,
     description="REST API Gateway for vendor onboarding portal",
+    env=env
+)
+
+# Stack 6: Bastion Host (Optional - for database access via Session Manager)
+bastion_stack = BastionStack(
+    app, "OnboardingHubBastionStack",
+    vpc=vpc_stack.vpc,
+    database_security_group=database_stack.database.connections.security_groups[0],
+    description="Bastion EC2 instance for secure RDS access via Session Manager",
     env=env
 )
 
 # Add dependencies
 storage_stack.add_dependency(vpc_stack)
 database_stack.add_dependency(vpc_stack)
+# bastion_stack depends on database implicitly through security group reference
 lambda_stack.add_dependency(storage_stack)
 lambda_stack.add_dependency(database_stack)
 api_stack.add_dependency(lambda_stack)
