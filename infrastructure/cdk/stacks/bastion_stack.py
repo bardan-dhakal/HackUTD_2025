@@ -113,7 +113,7 @@ class BastionStack(Stack):
                     ),
                 )
             ],
-            key_name=None,  # No SSH key - use Session Manager instead
+            key_name="bastion-key",  # SSH key pair for direct access
         )
 
         # ===========================================
@@ -149,16 +149,14 @@ class BastionStack(Stack):
             self,
             "BastionSecurityGroupId",
             value=bastion_security_group.security_group_id,
-            description="Bastion security group ID",
-            export_name="OnboardingHubBastionSecurityGroupId",
+            description="Bastion security group ID"
         )
 
         CfnOutput(
             self,
             "SSMSessionCommand",
             value=f"aws ssm start-session --target {bastion_instance.instance_id} --region us-east-1",
-            description="Command to start SSM Session Manager session",
-            export_name="OnboardingHubSSMSessionCommand",
+            description="Command to start SSM Session Manager session"
         )
 
         # Export instance reference for other stacks
