@@ -1,5 +1,24 @@
 """
 Lambda Stack - Serverless functions for document processing and business logic
+
+IMPORTANT: psycopg2 Lambda Layer Required
+==========================================
+All Lambda functions that connect to PostgreSQL require the psycopg2 library.
+Since psycopg2 has C dependencies, it must be compiled for the Lambda runtime.
+
+To add psycopg2 layer:
+1. Use an existing public layer ARN (recommended for quick setup):
+   arn:aws:lambda:us-east-1:898466741470:layer:psycopg2-py38:1
+
+2. Or build your own layer:
+   - Create a directory: mkdir -p python/lib/python3.11/site-packages
+   - Install: pip install psycopg2-binary -t python/lib/python3.11/site-packages
+   - Zip: zip -r psycopg2-layer.zip python/
+   - Upload to Lambda Layers in AWS Console
+   - Add layer ARN to each function below
+
+Uncomment the 'layers' parameter in each Lambda function definition below
+and replace with your layer ARN.
 """
 from aws_cdk import (
     Stack,

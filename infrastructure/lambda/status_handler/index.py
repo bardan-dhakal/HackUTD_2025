@@ -103,6 +103,33 @@ def handler(event, context):
         if not cursor.fetchone():
             next_steps.append("Complete ESG Questionnaire")
 
+        # Get risk score if available
+        cursor.execute("""
+            SELECT overall_score
+            FROM risk_scores
+            WHERE vendor_id = %s
+            ORDER BY calculated_at DESC
+            LIMIT 1
+        """, (vendor_id,))
+        risk_row = cursor.fetchone()
+        risk_score = risk_row[0] if risk_row else None
+
+        # Get timeline/activity
+        cursor.execute("""
+            SELECT action, timestamp
+            FROM audit_logs
+            WHERE vendor_id = %s
+            ORDER BY timestamp DESC
+            LIMIT 10
+        """, (vendor_id,))
+        timeline = [
+            {
+                'title': row[0].replace('_', ' ').title(),
+                'timestamp': row[1].isoformat() if row[1] else None
+            }
+            for row in cursor.fetchall()
+        ]
+
         cursor.close()
         conn.close()
 
@@ -117,13 +144,13 @@ def handler(event, context):
                 'company_name': vendor[1],
                 'status': vendor[2],
                 'onboarding_progress': vendor[3],
-                'integrations': {
-                    'ky3p_assessment_id': vendor[4],
-                    'slp_supplier_id': vendor[5]
-                },
+                'ky3p_assessment_id': vendor[4],
+                'slp_supplier_id': vendor[5],
                 'created_at': vendor[6].isoformat() if vendor[6] else None,
                 'documents': documents,
-                'next_steps': next_steps
+                'next_steps': next_steps,
+                'risk_score': risk_score,
+                'timeline': timeline
             })
         }
 

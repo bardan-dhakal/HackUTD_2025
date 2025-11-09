@@ -105,10 +105,8 @@ def handler(event, context):
                 'status': status,
                 'onboarding_progress': progress,
                 'created_at': created_at.isoformat(),
-                'integrations': {
-                    'ky3p_assessment_id': ky3p_id,
-                    'slp_supplier_id': slp_id
-                }
+                'ky3p_assessment_id': ky3p_id,
+                'slp_supplier_id': slp_id
             })
         }
 
