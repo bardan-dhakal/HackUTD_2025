@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { mockVendors } from '../services/mockData'
+import VendorVerification from '../components/VendorVerification'
+import RejectWithFeedback from '../components/RejectWithFeedback'
 
 const GSVendorDetailPage = () => {
   const { vendorId } = useParams()
@@ -8,6 +10,9 @@ const GSVendorDetailPage = () => {
   const [vendor, setVendor] = useState(null)
   const [activeTab, setActiveTab] = useState('overview')
   const [loading, setLoading] = useState(true)
+  const [statusMessage, setStatusMessage] = useState(null)
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [verificationResults, setVerificationResults] = useState(null)
 
   useEffect(() => {
     // TODO: Replace with actual API call
@@ -17,9 +22,51 @@ const GSVendorDetailPage = () => {
   }, [vendorId])
 
   const handleStatusChange = async (newStatus) => {
-    // TODO: Implement actual API call
-    console.log('Changing status to:', newStatus)
-    setVendor({ ...vendor, status: newStatus })
+    setLoading(true)
+    setStatusMessage(null)
+    
+    try {
+      // TODO: Replace with actual API call
+      console.log('Changing status to:', newStatus)
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Update the vendor in mockVendors array
+      const vendorIndex = mockVendors.findIndex(v => v.id === vendorId)
+      if (vendorIndex !== -1) {
+        mockVendors[vendorIndex].status = newStatus
+        mockVendors[vendorIndex].updated_at = new Date().toISOString()
+        if (newStatus === 'approved') {
+          mockVendors[vendorIndex].risk_score = vendor.risk_score || 85
+        }
+      }
+      
+      // Update local state
+      setVendor({ 
+        ...vendor, 
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      })
+      
+      // Show success message
+      setStatusMessage({
+        type: newStatus === 'approved' ? 'success' : 'error',
+        text: `Vendor ${newStatus === 'approved' ? 'approved' : 'rejected'} successfully`
+      })
+      
+      // Scroll to top to show message
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      
+    } catch (err) {
+      console.error('Status change error:', err)
+      setStatusMessage({
+        type: 'error',
+        text: 'Failed to update vendor status. Please try again.'
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (loading) {
@@ -83,26 +130,137 @@ const GSVendorDetailPage = () => {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="flex gap-4">
-            <button
-              onClick={() => handleStatusChange('approved')}
-              className="btn-primary bg-green-600 hover:bg-green-700"
-            >
-              ✓ Approve Vendor
-            </button>
-            <button
-              onClick={() => handleStatusChange('rejected')}
-              className="btn-primary bg-red-600 hover:bg-red-700"
-            >
-              ✗ Reject Vendor
-            </button>
-            <button className="btn-primary bg-gray-600 hover:bg-gray-700">
-              📧 Request More Info
-            </button>
+        {/* Status Change Message */}
+        {statusMessage && (
+          <div className={`rounded-lg p-4 mb-6 ${
+            statusMessage.type === 'success' 
+              ? 'bg-green-50 border border-green-200' 
+              : 'bg-red-50 border border-red-200'
+          }`}>
+            <div className="flex items-center">
+              {statusMessage.type === 'success' ? (
+                <svg className="w-6 h-6 text-green-600 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 text-red-600 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              )}
+              <div>
+                <h3 className={`text-lg font-semibold ${
+                  statusMessage.type === 'success' ? 'text-green-800' : 'text-red-800'
+                }`}>
+                  {statusMessage.text}
+                </h3>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Risk Score Display - Show for pending vendors */}
+        {vendor.status === 'pending' && vendor.risk_score && (
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg shadow p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-900 mb-2">AI Risk Assessment</h3>
+                <p className="text-gray-600 mb-4">Review the risk score before making your decision</p>
+                <div className="flex items-center gap-8">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Overall Risk Score</p>
+                    <div className="flex items-baseline">
+                      <span className="text-5xl font-bold text-gs-blue">{vendor.risk_score}</span>
+                      <span className="text-2xl text-gray-500 ml-1">/100</span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+                      <div 
+                        className={`h-4 rounded-full ${
+                          vendor.risk_score >= 80 ? 'bg-green-500' : 
+                          vendor.risk_score >= 60 ? 'bg-yellow-500' : 
+                          'bg-red-500'
+                        }`}
+                        style={{ width: `${vendor.risk_score}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      {vendor.risk_score >= 80 ? '✓ Low Risk - Recommended for Approval' : 
+                       vendor.risk_score >= 60 ? '⚠️ Medium Risk - Review Required' : 
+                       '⚠️ High Risk - Caution Advised'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Identity Verification - Show for pending vendors */}
+        {vendor.status === 'pending' && (
+          <VendorVerification 
+            vendor={vendor} 
+            onVerificationComplete={(results) => setVerificationResults(results)}
+          />
+        )}
+
+        {/* Action Buttons - Only show for pending vendors */}
+        {vendor.status === 'pending' && (
+          <div className="bg-white rounded-lg shadow p-4 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Review Actions</h3>
+            <div className="flex gap-4">
+              <button
+                onClick={() => handleStatusChange('approved')}
+                disabled={loading}
+                className="btn-primary bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Processing...' : '✓ Approve Vendor'}
+              </button>
+              <button
+                onClick={() => setShowRejectModal(true)}
+                disabled={loading}
+                className="btn-primary bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ✗ Reject with AI Feedback
+              </button>
+              <button 
+                className="btn-primary bg-gray-600 hover:bg-gray-700"
+                disabled={loading}
+              >
+                📧 Request More Info
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Status Message - Show for approved/rejected vendors */}
+        {vendor.status === 'approved' && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center">
+              <svg className="w-6 h-6 text-green-600 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <h3 className="text-lg font-semibold text-green-800">Vendor Approved</h3>
+                <p className="text-sm text-green-700">This vendor has been approved and can proceed with onboarding.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {vendor.status === 'rejected' && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center">
+              <svg className="w-6 h-6 text-red-600 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <h3 className="text-lg font-semibold text-red-800">Vendor Rejected</h3>
+                <p className="text-sm text-red-700">This vendor application has been rejected.</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow mb-6">
@@ -347,6 +505,19 @@ const GSVendorDetailPage = () => {
             )}
           </div>
         </div>
+
+        {/* Reject with Feedback Modal */}
+        {showRejectModal && (
+          <RejectWithFeedback
+            vendor={vendor}
+            verificationResults={verificationResults}
+            onClose={() => setShowRejectModal(false)}
+            onReject={(feedback) => {
+              console.log('Rejection feedback:', feedback)
+              handleStatusChange('rejected')
+            }}
+          />
+        )}
       </div>
     </div>
   )
